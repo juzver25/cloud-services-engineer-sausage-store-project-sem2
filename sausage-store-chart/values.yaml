@@ -7,7 +7,6 @@ global:
 
 
 frontend:
-### В чарте frontend отсутствуют некоторые важные файлы. Поймите какие и опишите их.
   replicas: 1
   revisionHistoryLimit: 15
   strategy:
@@ -15,7 +14,8 @@ frontend:
   service:
     port: 80
   ingress:
-    host: YOUR_STUDENT_HOSTNAME.students-projects.ru # Корректный домен будет указан в задании
+    host: front-YOURNAME.2sem.students-projects.ru
+    tlsSecret: 2sem-students-projects-wildcard-secret
     path: /
     pathType: Prefix
   containerPort: 80
@@ -28,6 +28,18 @@ frontend:
       memory: "128Mi"
       cpu: "1"
   nginxConf: nginx.conf
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 5
+    periodSeconds: 5
 
 backend:
   annotations:
@@ -45,7 +57,10 @@ backend:
   revisionHistoryLimit: 15
   replicas: 1
   strategy:
-  ### Опишите стратегию RollingUpdate для бэкенда
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   image: YOUR_DOCKERHUB/sausage-backend:latest
   imagePullPolicy: Always
   resources:

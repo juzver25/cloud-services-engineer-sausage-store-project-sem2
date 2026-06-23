@@ -30,19 +30,23 @@ spec:
           image: {{ .Values.image }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           resources:
-{{ toYaml .Values.resources | indent 12 }} 
+{{ toYaml .Values.resources | indent 12 }}
           ports:
-            - name: {{ .Chart.Name }}
+            - name: http
               containerPort: {{ .Values.containerPort }}
+          livenessProbe:
+{{ toYaml .Values.livenessProbe | indent 12 }}
+          readinessProbe:
+{{ toYaml .Values.readinessProbe | indent 12 }}
           volumeMounts:
-          - name: {{ .Release.Name }}-{{ .Chart.Name }}-conf
-            mountPath: /etc/nginx/{{ .Values.nginxConf }}
-            subPath: {{ .Values.nginxConf }}
-            readOnly: true
+            - name: {{ .Release.Name }}-{{ .Chart.Name }}-conf
+              mountPath: /etc/nginx/nginx.conf
+              subPath: {{ .Values.nginxConf }}
+              readOnly: true
       volumes:
         - name: {{ .Release.Name }}-{{ .Chart.Name }}-conf
           configMap:
             name: {{ .Release.Name }}-{{ .Chart.Name }}-conf
             items:
               - key: {{ .Values.nginxConf }}
-                path: {{ .Values.nginxConf }} 
+                path: {{ .Values.nginxConf }}

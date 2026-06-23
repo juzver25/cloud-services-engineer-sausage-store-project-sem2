@@ -72,9 +72,20 @@ backend:
       cpu: "1"
   containerPort: 8080
   livenessProbe:
-  ### Опишите LivenessProbe для бэкенда
+    httpGet:
+      path: /actuator/health
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
   vpa:
-  ### Опишите VPA для бэкенда
+    updatePolicy:
+      updateMode: "Off"
+    resourcePolicy:
+      containerPolicies:
+        - containerName: "*"
+          controlledResources:
+            - cpu
+            - memory
 
 backend-report:
   replicas: 1
@@ -104,6 +115,11 @@ backend-report:
       port: 8080
     initialDelaySeconds: 5
     periodSeconds: 5
+  hpa:
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 75
+    targetMemoryUtilizationPercentage: 80
 
 infra:
   postgresql:

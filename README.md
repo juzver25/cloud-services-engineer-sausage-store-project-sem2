@@ -34,3 +34,30 @@ sudo http-server ./dist/frontend/ -p 80 --proxy http://localhost:8080
 ```
 
 Then open your browser and go to [http://localhost](http://localhost)
+
+1. Multi-stage frontend/Dockerfile
+
+```
+# build
+FROM node:12-alpine as builder
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build -- --prod
+
+# release
+FROM nginx:stable-alpine
+COPY --from=builder /app/dist/frontend /usr/share/nginx/html
+EXPOSE 80
+```
+2. Исправления backend-report/Dockerfile
+
+Испрвлены строки 
+```
+COPY --from=builderer
+```
+```
+WORKDIR /root/
+```
+

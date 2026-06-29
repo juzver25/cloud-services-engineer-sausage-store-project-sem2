@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  NEXUS_HELM_REPO: https://nexus.cloud-services-engineer.education-services.ru/repository/helm_repo_juz
+  NEXUS_HELM_REPO: https://nexus.cloud-services-engineer.education-services.ru/repository/helm_repo_juz_2
   NEXUS_HELM_REPO_USER: ${{ secrets.NEXUS_HELM_REPO_USER }}
   NEXUS_HELM_REPO_PASSWORD: ${{ secrets.NEXUS_HELM_REPO_PASSWORD }}
   SAUSAGE_STORE_NAMESPACE: r-devops-magistracy-project-2sem-769573778
@@ -65,14 +65,14 @@ jobs:
         - name: Update chart dependencies
           run: helm dependency update sausage-store-chart/
         - name: Package Helm chart
-          run: helm package sausage-store-chart/
+          run: helm package sausage-store-chart/ --destination ./chart-dist
         - name: Upload chart to Nexus
           run: |
-            CHART_PACKAGE=$(ls *.tgz)
+            CHART_PACKAGE=$(ls ./chart-dist/*.tgz)
             curl -u "${NEXUS_HELM_REPO_USER}:${NEXUS_HELM_REPO_PASSWORD}" \
               --fail \
               --upload-file "${CHART_PACKAGE}" \
-              "${NEXUS_HELM_REPO}/${CHART_PACKAGE}"
+              "${NEXUS_HELM_REPO}/"
 
   # Деплоим приложения в кластер Kubernetes с помощью helm-чарт
   deploy_helm_chart_to_kubernetes:

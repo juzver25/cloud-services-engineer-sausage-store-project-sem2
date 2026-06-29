@@ -10,7 +10,6 @@ env:
   NEXUS_HELM_REPO_USER: ${{ secrets.NEXUS_HELM_REPO_USER }}
   NEXUS_HELM_REPO_PASSWORD: ${{ secrets.NEXUS_HELM_REPO_PASSWORD }}
   SAUSAGE_STORE_NAMESPACE: r-devops-magistracy-project-2sem-769573778
-  KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
   VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
 
 jobs:
@@ -21,12 +20,9 @@ jobs:
         - name: Check out the repo
           uses: actions/checkout@v3
         - name: Set up Docker Buildx
-          # Установка сборщика контейнеров Docker:
           uses: docker/setup-buildx-action@v2
         - name: Login to Docker 
-          # Авторизация на Docker Hub:
           uses: docker/login-action@v2
-          # При помощи with передаём в action параметры username и password:
           with:
             username: ${{ secrets.DOCKER_USER }}
             password: ${{ secrets.DOCKER_PASSWORD }}
@@ -90,10 +86,18 @@ jobs:
             helm repo add nexus $NEXUS_HELM_REPO --username $NEXUS_HELM_REPO_USER --password $NEXUS_HELM_REPO_PASSWORD
             helm repo update
         - name: Configure kubeconfig
+          env:
+            KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG }}
           run: |
-            mkdir -p $HOME/.kube
-            printf '%s\n' "$KUBE_CONFIG" > $HOME/.kube/config
-            chmod 600 $HOME/.kube/config
+            mkdir -p "$HOME/.kube"
+            CONFIG_PATH="$HOME/.kube/config"
+            if printf '%s' "$KUBE_CONFIG_DATA" | head -c 10 | grep -q 'apiVersion'; then
+              printf '%s' "$KUBE_CONFIG_DATA" > "$CONFIG_PATH"
+            else
+              printf '%s' "$KUBE_CONFIG_DATA" | base64 -d > "$CONFIG_PATH"
+            fi
+            chmod 600 "$CONFIG_PATH"
+            head -n 3 "$CONFIG_PATH"
         - name: Deploy Helm chart to Kubernetes
           run: |
             helm upgrade --install sausage-store nexus/sausage-store \

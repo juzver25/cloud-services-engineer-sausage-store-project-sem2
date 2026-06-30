@@ -104,6 +104,7 @@ jobs:
           run: |
             helm upgrade --install sausage-store nexus/sausage-store \
               --namespace $SAUSAGE_STORE_NAMESPACE \
+              --timeout 15m \
               --set frontend.ingress.host=$FRONTEND_HOST \
               --set frontend.image=${DOCKER_USER}/sausage-frontend:latest \
               --set backend.image=${DOCKER_USER}/sausage-backend:latest \

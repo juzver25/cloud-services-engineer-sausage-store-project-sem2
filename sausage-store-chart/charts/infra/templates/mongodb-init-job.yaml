@@ -22,7 +22,8 @@ metadata:
     helm.sh/hook-weight: "5"
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
 spec:
-  backoffLimit: 10
+  backoffLimit: 6
+  activeDeadlineSeconds: 300
   template:
     spec:
       restartPolicy: OnFailure
@@ -37,11 +38,15 @@ spec:
             - -ec
             - |
               echo "Waiting for MongoDB..."
-              until mongosh --host mongodb \
-                --username "${MONGO_INITDB_ROOT_USERNAME}" \
-                --password "${MONGO_INITDB_ROOT_PASSWORD}" \
-                --authenticationDatabase admin \
-                --eval "db.adminCommand('ping')" &>/dev/null; do
+              for i in $(seq 1 60); do
+                if mongosh --host mongodb \
+                  --username "${MONGO_INITDB_ROOT_USERNAME}" \
+                  --password "${MONGO_INITDB_ROOT_PASSWORD}" \
+                  --authenticationDatabase admin \
+                  --quiet \
+                  --eval "db.adminCommand('ping').ok" | grep -q 1; then
+                  break
+                fi
                 sleep 5
               done
 
@@ -50,13 +55,22 @@ spec:
                 --username "${MONGO_INITDB_ROOT_USERNAME}" \
                 --password "${MONGO_INITDB_ROOT_PASSWORD}" \
                 --authenticationDatabase admin \
+                --quiet \
                 --eval "
                   const dbName = '${REPORTS_DB}';
                   const userName = '${REPORTS_USER}';
                   const userPwd = '${REPORTS_PASSWORD}';
                   const targetDb = db.getSiblingDB(dbName);
+                  let userExists = false;
 
-                  if (targetDb.getUser(userName)) {
+                  try {
+                    targetDb.getUser(userName);
+                    userExists = true;
+                  } catch (e) {
+                    userExists = false;
+                  }
+
+                  if (userExists) {
                     print('User already exists: ' + userName);
                   } else {
                     targetDb.createUser({

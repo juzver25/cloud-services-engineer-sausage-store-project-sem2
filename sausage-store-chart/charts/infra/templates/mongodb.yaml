@@ -3,6 +3,7 @@ kind: StatefulSet
 metadata:
   name: mongodb
   annotations:
+    helm.sh/hook: post-install,post-upgrade
     helm.sh/hook-weight: "-5"
 spec:
   serviceName: mongodb
@@ -43,6 +44,9 @@ metadata:
   name: mongodb
   labels:
     app: mongodb
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-5"
 spec:
   ports:
   - port: {{ .Values.mongodb.containerPort }}
@@ -55,6 +59,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mongodb-conf
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-5"
 data:
   MONGO_INITDB_ROOT_USERNAME: {{ .Values.mongodb.env.MONGO_INITDB_ROOT_USERNAME }}
   MONGO_INITDB_ROOT_PASSWORD: {{ .Values.mongodb.env.MONGO_INITDB_ROOT_PASSWORD }}

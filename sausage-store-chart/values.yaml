@@ -95,7 +95,7 @@ backend-report:
   image: YOUR_DOCKERHUB/sausage-backend-report:latest
   containerPort: 8080
   env:
-    db: mongodb://root:rootpassword@mongodb:27017/sausage-store
+    db: mongodb://reports:reportspassword@mongodb:27017/sausage-store
   resources:
     requests:
       memory: "128Mi"
@@ -142,6 +142,10 @@ infra:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: rootpassword
     containerPort: 27017
+    reports:
+      database: sausage-store
+      username: reports
+      password: reportspassword
     resources:
       requests:
         memory: "128Mi"

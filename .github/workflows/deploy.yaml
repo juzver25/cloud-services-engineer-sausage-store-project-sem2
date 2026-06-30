@@ -132,10 +132,18 @@ jobs:
             --set global.vault.vaultToken="${VAULT_TOKEN}" \
             --history-max 3
 
-          kubectl delete job mongodb-init-manual \
-            -n "${SAUSAGE_STORE_NAMESPACE}" --ignore-not-found --wait=true
-          kubectl apply -n "${SAUSAGE_STORE_NAMESPACE}" \
-            -f .github/k8s/mongodb-init-job.yaml
-          kubectl wait --for=condition=complete job/mongodb-init-manual \
-            -n "${SAUSAGE_STORE_NAMESPACE}" --timeout=120s
-          kubectl logs job/mongodb-init-manual -n "${SAUSAGE_STORE_NAMESPACE}"
+          NS="${SAUSAGE_STORE_NAMESPACE}"
+          kubectl wait --for=condition=ready pod/mongodb-0 -n "$NS" --timeout=180s
+          kubectl scale deployment sausage-store-backend-report -n "$NS" --replicas=0 || true
+
+          kubectl delete job mongodb-init-manual -n "$NS" --ignore-not-found --wait=true
+          kubectl apply -n "$NS" -f .github/k8s/mongodb-init-job.yaml
+          if ! kubectl wait --for=condition=complete job/mongodb-init-manual -n "$NS" --timeout=180s; then
+            kubectl describe job/mongodb-init-manual -n "$NS" || true
+            kubectl logs job/mongodb-init-manual -n "$NS" || true
+            echo "::warning::MongoDB init job failed; backend-report may not start"
+          else
+            kubectl logs job/mongodb-init-manual -n "$NS"
+          fi
+
+          kubectl scale deployment sausage-store-backend-report -n "$NS" --replicas=1 || true

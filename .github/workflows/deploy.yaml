@@ -70,7 +70,6 @@ jobs:
               --upload-file "${CHART_PACKAGE}" \
               "${NEXUS_HELM_REPO}/"
 
-  # Деплоим приложения в кластер Kubernetes с помощью helm-чарт
   deploy_helm_chart_to_kubernetes:
       name: Deploy Helm Chart To Kubernetes
       runs-on: ubuntu-latest
@@ -101,5 +100,4 @@ jobs:
         - name: Deploy Helm chart to Kubernetes
           run: |
             helm upgrade --install sausage-store nexus/sausage-store \
-              --namespace $SAUSAGE_STORE_NAMESPACE \
-              --create-namespace
+              --namespace $SAUSAGE_STORE_NAMESPACE

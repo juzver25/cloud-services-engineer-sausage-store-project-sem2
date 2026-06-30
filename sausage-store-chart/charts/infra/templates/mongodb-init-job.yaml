@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: mongodb-init-conf
   annotations:
-    helm.sh/hook: post-install
+    helm.sh/hook: post-install,post-upgrade
     helm.sh/hook-weight: "4"
     helm.sh/hook-delete-policy: before-hook-creation
 data:
@@ -18,7 +18,7 @@ kind: Job
 metadata:
   name: mongodb-init-reports
   annotations:
-    helm.sh/hook: post-install
+    helm.sh/hook: post-install,post-upgrade
     helm.sh/hook-weight: "5"
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
 spec:
@@ -30,6 +30,13 @@ spec:
       containers:
         - name: mongodb-init
           image: mongo:7.0
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
           envFrom:
             - configMapRef:
                 name: mongodb-init-conf

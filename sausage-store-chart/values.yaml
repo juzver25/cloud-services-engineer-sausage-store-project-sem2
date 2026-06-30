@@ -5,7 +5,7 @@ global:
       cpu: "50m"
       memory: "32Mi"
     limits:
-      cpu: "100m"
+      cpu: "50m"
       memory: "64Mi"
   ###vault:
   ###  host: ip
@@ -33,7 +33,7 @@ frontend:
       cpu: "100m"
     limits:
       memory: "128Mi"
-      cpu: "1"
+      cpu: "300m"
   nginxConf: nginx.conf
   livenessProbe:
     httpGet:
@@ -77,7 +77,7 @@ backend:
       cpu: "100m"
     limits:
       memory: "768Mi"
-      cpu: "1"
+      cpu: "400m"
   containerPort: 8080
   startupProbe:
     httpGet:
@@ -122,7 +122,7 @@ backend-report:
       cpu: "100m"
     limits:
       memory: "256Mi"
-      cpu: "500m"
+      cpu: "200m"
   livenessProbe:
     httpGet:
       path: /api/v1/health
@@ -156,7 +156,7 @@ infra:
         cpu: "100m"
       limits:
         memory: "512Mi"
-        cpu: "500m"
+        cpu: "300m"
   mongodb:
     env:
       MONGO_INITDB_ROOT_USERNAME: root
@@ -172,4 +172,4 @@ infra:
         cpu: "50m"
       limits:
         memory: "256Mi"
-        cpu: "200m"
+        cpu: "100m"

@@ -123,6 +123,10 @@ jobs:
               kubectl delete pvc postgresql-data-postgresql-0 -n "$NS" --ignore-not-found --wait=true
             fi
 
+            # Free CPU quota (namespace limit: 3 cores) before backend pod creation.
+            kubectl scale deployment sausage-store-backend-report -n "$NS" --replicas=0 || true
+            kubectl wait --for=delete pod -l app=sausage-store-backend-report -n "$NS" --timeout=120s || true
+
             helm upgrade --install "$RELEASE" nexus/sausage-store \
               --namespace "$NS" \
               --timeout 15m \
@@ -145,3 +149,7 @@ jobs:
               exit 1
             }
             kubectl rollout status deployment/sausage-store-frontend -n "$NS" --timeout=300s
+            kubectl scale deployment sausage-store-backend-report -n "$NS" --replicas=1
+            kubectl rollout status deployment/sausage-store-backend-report -n "$NS" --timeout=300s || {
+              kubectl logs -n "$NS" -l app=sausage-store-backend-report --tail=50 || true
+            }

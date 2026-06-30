@@ -106,16 +106,14 @@ jobs:
             RELEASE="sausage-store"
 
             # Namespace secret quota is limited; Helm stores each revision as a Secret.
-            if helm status "$RELEASE" -n "$NS" >/dev/null 2>&1; then
-              helm history "$RELEASE" -n "$NS" 2>/dev/null \
-                | tail -n +2 \
-                | sort -rn -k1 \
-                | tail -n +4 \
-                | awk '{print $1}' \
-                | while read -r rev; do
-                    helm delete "$RELEASE" -n "$NS" --revision "$rev" || true
-                  done
-            fi
+            kubectl get secrets -n "$NS" -o name 2>/dev/null \
+              | grep 'secret/sh.helm.release.v1.'"${RELEASE}"'.' \
+              | sed 's|secret/sh.helm.release.v1.'"${RELEASE}"'.||' \
+              | sort -n \
+              | head -n -3 \
+              | while read -r rev; do
+                  kubectl delete secret -n "$NS" "sh.helm.release.v1.${RELEASE}.${rev}" || true
+                done
 
             helm upgrade --install "$RELEASE" nexus/sausage-store \
               --namespace "$NS" \
@@ -127,8 +125,12 @@ jobs:
               --set backend-report.image=${DOCKER_USER}/sausage-backend-report:latest
             kubectl get pods,svc,ingress -n "$NS"
             kubectl rollout status deployment/sausage-store-backend -n "$NS" --timeout=600s || {
-              kubectl describe pod -n "$NS" -l app=sausage-store-backend
-              kubectl logs -n "$NS" -l app=sausage-store-backend --tail=100
+              kubectl get pods -n "$NS" -o wide
+              kubectl describe deployment sausage-store-backend -n "$NS"
+              kubectl get pods -n "$NS" -o name | grep backend | while read -r pod; do
+                kubectl describe -n "$NS" "$pod"
+                kubectl logs -n "$NS" "$pod" --all-containers --tail=100 || true
+              done
               exit 1
             }
             kubectl rollout status deployment/sausage-store-frontend -n "$NS" --timeout=300s

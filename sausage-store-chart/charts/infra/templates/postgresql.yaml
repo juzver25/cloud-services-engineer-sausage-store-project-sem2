@@ -19,6 +19,9 @@ spec:
         envFrom:
           - configMapRef:
               name: postgresql-conf
+        env:
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
         ports:
         - containerPort: {{ .Values.postgresql.containerPort }}
         resources:

@@ -96,6 +96,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: add_helm_chart_to_nexus
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set up Helm
         uses: azure/setup-helm@v4
 
@@ -128,3 +131,11 @@ jobs:
             --set global.vault.host="${VAULT_HOST}" \
             --set global.vault.vaultToken="${VAULT_TOKEN}" \
             --history-max 3
+
+          kubectl delete job mongodb-init-manual \
+            -n "${SAUSAGE_STORE_NAMESPACE}" --ignore-not-found --wait=true
+          kubectl apply -n "${SAUSAGE_STORE_NAMESPACE}" \
+            -f .github/k8s/mongodb-init-job.yaml
+          kubectl wait --for=condition=complete job/mongodb-init-manual \
+            -n "${SAUSAGE_STORE_NAMESPACE}" --timeout=120s
+          kubectl logs job/mongodb-init-manual -n "${SAUSAGE_STORE_NAMESPACE}"

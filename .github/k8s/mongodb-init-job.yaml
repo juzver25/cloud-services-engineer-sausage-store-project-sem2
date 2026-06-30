@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongodb-init-manual
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 120
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: mongodb-init
+          image: mongo:7.0
+          envFrom:
+            - secretRef:
+                name: mongodb-secret
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              URI="mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/admin?serverSelectionTimeoutMS=5000"
+              for i in $(seq 1 30); do
+                if mongosh "$URI" --quiet --eval "quit(db.adminCommand('ping').ok === 1 ? 0 : 1)" 2>/dev/null; then
+                  break
+                fi
+                sleep 2
+              done
+              mongosh "$URI" --quiet --eval "
+                const d = db.getSiblingDB('${REPORTS_DATABASE}');
+                const users = d.getUsers().users || [];
+                const exists = users.some(function(u) { return u.user === '${REPORTS_USERNAME}'; });
+                if (!exists) {
+                  d.createUser({
+                    user: '${REPORTS_USERNAME}',
+                    pwd: '${REPORTS_PASSWORD}',
+                    roles: [{ role: 'readWrite', db: '${REPORTS_DATABASE}' }]
+                  });
+                  print('User created');
+                } else {
+                  print('User exists');
+                }"

@@ -10,6 +10,7 @@ env:
   NEXUS_HELM_REPO_USER: ${{ secrets.NEXUS_HELM_REPO_USER }}
   NEXUS_HELM_REPO_PASSWORD: ${{ secrets.NEXUS_HELM_REPO_PASSWORD }}
   SAUSAGE_STORE_NAMESPACE: r-devops-magistracy-project-2sem-769573778
+  FRONTEND_HOST: front-juz.2sem.students-projects.ru
   VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
 
 jobs:
@@ -98,6 +99,12 @@ jobs:
             chmod 600 "$CONFIG_PATH"
             head -n 3 "$CONFIG_PATH"
         - name: Deploy Helm chart to Kubernetes
+          env:
+            DOCKER_USER: ${{ secrets.DOCKER_USER }}
           run: |
             helm upgrade --install sausage-store nexus/sausage-store \
-              --namespace $SAUSAGE_STORE_NAMESPACE
+              --namespace $SAUSAGE_STORE_NAMESPACE \
+              --set frontend.ingress.host=$FRONTEND_HOST \
+              --set frontend.image=${DOCKER_USER}/sausage-frontend:latest \
+              --set backend.image=${DOCKER_USER}/sausage-backend:latest \
+              --set backend-report.image=${DOCKER_USER}/sausage-backend-report:latest

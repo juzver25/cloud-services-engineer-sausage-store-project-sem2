@@ -54,6 +54,8 @@ backend:
     logPath: /logs
     springCloudVaultEnabled: "false"
     springAutoconfigureExclude: org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration,org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+    springFlywayEnabled: "false"
+    springJpaHibernateDdlAuto: update
   service:
     port: 8080
   revisionHistoryLimit: 15
@@ -67,24 +69,28 @@ backend:
   imagePullPolicy: Always
   resources:
     requests:
-      memory: "256Mi"
-      cpu: "100m"
-    limits:
       memory: "512Mi"
+      cpu: "200m"
+    limits:
+      memory: "1Gi"
       cpu: "1"
   containerPort: 8080
+  startupProbe:
+    httpGet:
+      path: /actuator/health
+      port: 8080
+    periodSeconds: 10
+    failureThreshold: 60
   livenessProbe:
     httpGet:
       path: /actuator/health
       port: 8080
-    initialDelaySeconds: 180
     periodSeconds: 15
     failureThreshold: 6
   readinessProbe:
     httpGet:
       path: /actuator/health
       port: 8080
-    initialDelaySeconds: 60
     periodSeconds: 10
     failureThreshold: 12
   vpa:

@@ -84,11 +84,17 @@ spec:
               value: {{ .Values.env.springCloudVaultEnabled | quote }}
             - name: SPRING_AUTOCONFIGURE_EXCLUDE
               value: {{ .Values.env.springAutoconfigureExclude | quote }}
+            - name: SPRING_FLYWAY_ENABLED
+              value: {{ .Values.env.springFlywayEnabled | quote }}
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: {{ .Values.env.springJpaHibernateDdlAuto | quote }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
           ports:
             - name: {{ .Chart.Name }}
               containerPort: {{ .Values.containerPort }}
+          startupProbe:
+{{ toYaml .Values.startupProbe | indent 12 }}
           livenessProbe:
 {{ toYaml .Values.livenessProbe | indent 12 }}
           readinessProbe:

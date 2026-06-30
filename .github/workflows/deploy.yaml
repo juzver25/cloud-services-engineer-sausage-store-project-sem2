@@ -109,3 +109,10 @@ jobs:
               --set frontend.image=${DOCKER_USER}/sausage-frontend:latest \
               --set backend.image=${DOCKER_USER}/sausage-backend:latest \
               --set backend-report.image=${DOCKER_USER}/sausage-backend-report:latest
+            kubectl get pods,svc,ingress -n $SAUSAGE_STORE_NAMESPACE
+            kubectl rollout status deployment/sausage-store-backend -n $SAUSAGE_STORE_NAMESPACE --timeout=600s || {
+              kubectl describe pod -n $SAUSAGE_STORE_NAMESPACE -l app=sausage-store-backend
+              kubectl logs -n $SAUSAGE_STORE_NAMESPACE -l app=sausage-store-backend --tail=100
+              exit 1
+            }
+            kubectl rollout status deployment/sausage-store-frontend -n $SAUSAGE_STORE_NAMESPACE --timeout=300s

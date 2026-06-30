@@ -7,6 +7,10 @@ global:
     limits:
       cpu: "50m"
       memory: "64Mi"
+  mongodb:
+    reportUsername: reports
+    reportPassword: reportspassword
+    database: sausage-store
   ###vault:
   ###  host: ip
   ###  name: vault
@@ -158,14 +162,11 @@ infra:
         memory: "512Mi"
         cpu: "300m"
   mongodb:
-    env:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+    image: mongo:7.0
+    rootUsername: root
+    rootPassword: rootpassword
     containerPort: 27017
-    reports:
-      database: sausage-store
-      username: reports
-      password: reportspassword
+    storage: 1Gi
     resources:
       requests:
         memory: "128Mi"
@@ -173,3 +174,13 @@ infra:
       limits:
         memory: "256Mi"
         cpu: "100m"
+    initJob:
+      enabled: true
+      image: mongo:7.0
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "64Mi"
+        limits:
+          cpu: "100m"
+          memory: "128Mi"

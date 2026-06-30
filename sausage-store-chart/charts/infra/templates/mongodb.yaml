@@ -1,26 +1,21 @@
 apiVersion: v1
-kind: ConfigMap
+kind: Secret
 metadata:
-  name: mongodb-init-scripts
-data:
-  01-reports-user.js: |
-    db = db.getSiblingDB('{{ .Values.mongodb.reports.database }}');
-    try {
-      db.getUser('{{ .Values.mongodb.reports.username }}');
-      print('User already exists: {{ .Values.mongodb.reports.username }}');
-    } catch (e) {
-      db.createUser({
-        user: '{{ .Values.mongodb.reports.username }}',
-        pwd: '{{ .Values.mongodb.reports.password }}',
-        roles: [{ role: 'readWrite', db: '{{ .Values.mongodb.reports.database }}' }]
-      });
-      print('User created: {{ .Values.mongodb.reports.username }}');
-    }
+  name: mongodb-secret
+  namespace: {{ .Release.Namespace }}
+type: Opaque
+stringData:
+  MONGO_INITDB_ROOT_USERNAME: {{ .Values.mongodb.rootUsername | quote }}
+  MONGO_INITDB_ROOT_PASSWORD: {{ .Values.mongodb.rootPassword | quote }}
+  REPORTS_USERNAME: {{ .Values.global.mongodb.reportUsername | quote }}
+  REPORTS_PASSWORD: {{ .Values.global.mongodb.reportPassword | quote }}
+  REPORTS_DATABASE: {{ .Values.global.mongodb.database | quote }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: mongodb
+  namespace: {{ .Release.Namespace }}
 spec:
   serviceName: mongodb
   replicas: 1
@@ -33,52 +28,80 @@ spec:
         app: mongodb
     spec:
       containers:
-      - name: mongodb
-        image: mongo:7.0
-        envFrom:
-          - configMapRef:
-              name: mongodb-conf
-        ports:
-        - containerPort: {{ .Values.mongodb.containerPort }}
-        resources:
-{{ toYaml .Values.mongodb.resources | indent 10 }}
-        volumeMounts:
-        - name: mongodb-data
-          mountPath: /data/db
-        - name: mongodb-init-scripts
-          mountPath: /docker-entrypoint-initdb.d
-          readOnly: true
-      volumes:
-      - name: mongodb-init-scripts
-        configMap:
-          name: mongodb-init-scripts
+        - name: mongodb
+          image: {{ .Values.mongodb.image }}
+          envFrom:
+            - secretRef:
+                name: mongodb-secret
+          ports:
+            - containerPort: {{ .Values.mongodb.containerPort }}
+          resources:
+{{ toYaml .Values.mongodb.resources | indent 12 }}
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /data/db
   volumeClaimTemplates:
-  - metadata:
-      name: mongodb-data
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 1Gi
+    - metadata:
+        name: mongodb-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.mongodb.storage }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: mongodb
+  namespace: {{ .Release.Namespace }}
   labels:
     app: mongodb
 spec:
   ports:
-  - port: {{ .Values.mongodb.containerPort }}
-    targetPort: {{ .Values.mongodb.containerPort }}
+    - port: {{ .Values.mongodb.containerPort }}
+      targetPort: {{ .Values.mongodb.containerPort }}
   selector:
     app: mongodb
   clusterIP: None
+{{- if .Values.mongodb.initJob.enabled }}
 ---
-apiVersion: v1
-kind: ConfigMap
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: mongodb-conf
-data:
-  MONGO_INITDB_ROOT_USERNAME: {{ .Values.mongodb.env.MONGO_INITDB_ROOT_USERNAME }}
-  MONGO_INITDB_ROOT_PASSWORD: {{ .Values.mongodb.env.MONGO_INITDB_ROOT_PASSWORD }}
+  name: mongodb-init
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: "post-install,post-upgrade"
+    helm.sh/hook-weight: "5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 120
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mongodb-init
+          image: {{ .Values.mongodb.initJob.image }}
+          envFrom:
+            - secretRef:
+                name: mongodb-secret
+          resources:
+{{ toYaml .Values.mongodb.initJob.resources | indent 12 }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mongosh "mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/admin" --eval "
+              db = db.getSiblingDB('${REPORTS_DATABASE}');
+              try {
+                db.getUser('${REPORTS_USERNAME}');
+              } catch (e) {
+                db.createUser({
+                  user: '${REPORTS_USERNAME}',
+                  pwd: '${REPORTS_PASSWORD}',
+                  roles: [{ role: 'readWrite', db: '${REPORTS_DATABASE}' }]
+                });
+              }"
+{{- end }}

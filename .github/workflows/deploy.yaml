@@ -138,6 +138,7 @@ jobs:
             kubectl get pods,svc,ingress -n "$NS"
             kubectl rollout status statefulset/postgresql -n "$NS" --timeout=300s
             kubectl rollout status statefulset/mongodb -n "$NS" --timeout=300s
+
             kubectl rollout status deployment/sausage-store-backend -n "$NS" --timeout=600s || {
               kubectl get pods -n "$NS" -o wide
               kubectl describe deployment sausage-store-backend -n "$NS"

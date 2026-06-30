@@ -102,17 +102,33 @@ jobs:
           env:
             DOCKER_USER: ${{ secrets.DOCKER_USER }}
           run: |
-            helm upgrade --install sausage-store nexus/sausage-store \
-              --namespace $SAUSAGE_STORE_NAMESPACE \
+            NS="$SAUSAGE_STORE_NAMESPACE"
+            RELEASE="sausage-store"
+
+            # Namespace secret quota is limited; Helm stores each revision as a Secret.
+            if helm status "$RELEASE" -n "$NS" >/dev/null 2>&1; then
+              helm history "$RELEASE" -n "$NS" 2>/dev/null \
+                | tail -n +2 \
+                | sort -rn -k1 \
+                | tail -n +4 \
+                | awk '{print $1}' \
+                | while read -r rev; do
+                    helm delete "$RELEASE" -n "$NS" --revision "$rev" || true
+                  done
+            fi
+
+            helm upgrade --install "$RELEASE" nexus/sausage-store \
+              --namespace "$NS" \
               --timeout 15m \
+              --history-max 3 \
               --set frontend.ingress.host=$FRONTEND_HOST \
               --set frontend.image=${DOCKER_USER}/sausage-frontend:latest \
               --set backend.image=${DOCKER_USER}/sausage-backend:latest \
               --set backend-report.image=${DOCKER_USER}/sausage-backend-report:latest
-            kubectl get pods,svc,ingress -n $SAUSAGE_STORE_NAMESPACE
-            kubectl rollout status deployment/sausage-store-backend -n $SAUSAGE_STORE_NAMESPACE --timeout=600s || {
-              kubectl describe pod -n $SAUSAGE_STORE_NAMESPACE -l app=sausage-store-backend
-              kubectl logs -n $SAUSAGE_STORE_NAMESPACE -l app=sausage-store-backend --tail=100
+            kubectl get pods,svc,ingress -n "$NS"
+            kubectl rollout status deployment/sausage-store-backend -n "$NS" --timeout=600s || {
+              kubectl describe pod -n "$NS" -l app=sausage-store-backend
+              kubectl logs -n "$NS" -l app=sausage-store-backend --tail=100
               exit 1
             }
-            kubectl rollout status deployment/sausage-store-frontend -n $SAUSAGE_STORE_NAMESPACE --timeout=300s
+            kubectl rollout status deployment/sausage-store-frontend -n "$NS" --timeout=300s

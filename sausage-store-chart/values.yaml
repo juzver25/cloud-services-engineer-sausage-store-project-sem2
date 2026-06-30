@@ -19,7 +19,7 @@ frontend:
     path: /
     pathType: Prefix
   containerPort: 80
-  image: ${{ secrets.DOCKER_USER }}/sausage-frontend:latest
+  image: YOUR_DOCKERHUB/sausage-frontend:latest
   resources:
     requests:
       memory: "128Mi"
@@ -61,7 +61,7 @@ backend:
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
-  image: ${{ secrets.DOCKER_USER }}/sausage-backend:latest
+  image: YOUR_DOCKERHUB/sausage-backend:latest
   imagePullPolicy: Always
   resources:
     requests:
@@ -92,7 +92,7 @@ backend-report:
   revisionHistoryLimit: 15
   strategy:
     type: Recreate
-  image: Y${{ secrets.DOCKER_USER }}/sausage-backend-report:latest
+  image: YOUR_DOCKERHUB/sausage-backend-report:latest
   containerPort: 8080
   env:
     db: mongodb://root:rootpassword@mongodb:27017/sausage-store
@@ -142,3 +142,10 @@ infra:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: rootpassword
     containerPort: 27017
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"

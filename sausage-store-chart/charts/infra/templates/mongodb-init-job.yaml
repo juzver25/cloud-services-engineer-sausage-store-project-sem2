@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: mongodb-init-conf
   annotations:
-    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook: post-install
     helm.sh/hook-weight: "4"
     helm.sh/hook-delete-policy: before-hook-creation
 data:
@@ -18,12 +18,12 @@ kind: Job
 metadata:
   name: mongodb-init-reports
   annotations:
-    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook: post-install
     helm.sh/hook-weight: "5"
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
 spec:
-  backoffLimit: 6
-  activeDeadlineSeconds: 300
+  backoffLimit: 3
+  activeDeadlineSeconds: 180
   template:
     spec:
       restartPolicy: OnFailure
@@ -37,47 +37,99 @@ spec:
             - bash
             - -ec
             - |
-              echo "Waiting for MongoDB..."
-              for i in $(seq 1 60); do
-                if mongosh --host mongodb \
-                  --username "${MONGO_INITDB_ROOT_USERNAME}" \
-                  --password "${MONGO_INITDB_ROOT_PASSWORD}" \
-                  --authenticationDatabase admin \
+              MONGO_HOST="mongodb-0.mongodb"
+              MONGO_PORT="27017"
+              MONGO_OPTS="?serverSelectionTimeoutMS=3000&directConnection=true"
+              MONGO_URI_AUTH="mongodb://${MONGO_HOST}:${MONGO_PORT}/admin${MONGO_OPTS}"
+              MONGO_URI_OPEN="mongodb://${MONGO_HOST}:${MONGO_PORT}/${MONGO_OPTS}"
+
+              mongo_ping() {
+                local uri="$1"
+                shift
+                mongosh "${uri}" "$@" \
                   --quiet \
-                  --eval "db.adminCommand('ping').ok" | grep -q 1; then
+                  --eval "quit(db.adminCommand('ping').ok === 1 ? 0 : 1)" >/dev/null 2>&1
+              }
+
+              echo "Waiting for MongoDB at ${MONGO_HOST}..."
+              ready=0
+              use_auth=0
+              for i in $(seq 1 60); do
+                if mongo_ping "${MONGO_URI_AUTH}" \
+                  --username "${MONGO_INITDB_ROOT_USERNAME}" \
+                  --password "${MONGO_INITDB_ROOT_PASSWORD}"; then
+                  ready=1
+                  use_auth=1
+                  echo "MongoDB is ready with auth (attempt ${i})"
                   break
                 fi
-                sleep 5
+                if mongo_ping "${MONGO_URI_OPEN}"; then
+                  ready=1
+                  use_auth=0
+                  echo "MongoDB is ready without auth (attempt ${i})"
+                  break
+                fi
+                sleep 2
               done
 
-              echo "Creating database and user for reports..."
-              mongosh --host mongodb \
-                --username "${MONGO_INITDB_ROOT_USERNAME}" \
-                --password "${MONGO_INITDB_ROOT_PASSWORD}" \
-                --authenticationDatabase admin \
-                --quiet \
-                --eval "
-                  const dbName = '${REPORTS_DB}';
-                  const userName = '${REPORTS_USER}';
-                  const userPwd = '${REPORTS_PASSWORD}';
-                  const targetDb = db.getSiblingDB(dbName);
-                  let userExists = false;
+              if [ "${ready}" -ne 1 ]; then
+                echo "ERROR: MongoDB is not ready after 60 attempts"
+                exit 1
+              fi
 
-                  try {
-                    targetDb.getUser(userName);
-                    userExists = true;
-                  } catch (e) {
-                    userExists = false;
-                  }
-
-                  if (userExists) {
-                    print('User already exists: ' + userName);
-                  } else {
-                    targetDb.createUser({
-                      user: userName,
-                      pwd: userPwd,
-                      roles: [{ role: 'readWrite', db: dbName }]
-                    });
-                    print('User created: ' + userName);
-                  }
-                "
+              echo "Ensuring reports user exists..."
+              if [ "${use_auth}" -eq 1 ]; then
+                mongosh "${MONGO_URI_AUTH}" \
+                  --username "${MONGO_INITDB_ROOT_USERNAME}" \
+                  --password "${MONGO_INITDB_ROOT_PASSWORD}" \
+                  --quiet \
+                  --eval "
+                    const dbName = '${REPORTS_DB}';
+                    const userName = '${REPORTS_USER}';
+                    const userPwd = '${REPORTS_PASSWORD}';
+                    const targetDb = db.getSiblingDB(dbName);
+                    let userExists = false;
+                    try {
+                      targetDb.getUser(userName);
+                      userExists = true;
+                    } catch (e) {
+                      userExists = false;
+                    }
+                    if (userExists) {
+                      print('User already exists: ' + userName);
+                    } else {
+                      targetDb.createUser({
+                        user: userName,
+                        pwd: userPwd,
+                        roles: [{ role: 'readWrite', db: dbName }]
+                      });
+                      print('User created: ' + userName);
+                    }
+                  "
+              else
+                mongosh "${MONGO_URI_OPEN}" \
+                  --quiet \
+                  --eval "
+                    const dbName = '${REPORTS_DB}';
+                    const userName = '${REPORTS_USER}';
+                    const userPwd = '${REPORTS_PASSWORD}';
+                    const targetDb = db.getSiblingDB(dbName);
+                    let userExists = false;
+                    try {
+                      targetDb.getUser(userName);
+                      userExists = true;
+                    } catch (e) {
+                      userExists = false;
+                    }
+                    if (userExists) {
+                      print('User already exists: ' + userName);
+                    } else {
+                      targetDb.createUser({
+                        user: userName,
+                        pwd: userPwd,
+                        roles: [{ role: 'readWrite', db: dbName }]
+                      });
+                      print('User created: ' + userName);
+                    }
+                  "
+              fi

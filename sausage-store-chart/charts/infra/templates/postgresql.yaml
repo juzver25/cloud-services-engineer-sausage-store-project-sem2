@@ -26,6 +26,22 @@ spec:
         - containerPort: {{ .Values.postgresql.containerPort }}
         resources:
 {{ toYaml .Values.postgresql.resources | indent 10 }}
+        readinessProbe:
+          exec:
+            command:
+              - pg_isready
+              - -U
+              - {{ .Values.postgresql.env.POSTGRES_USER }}
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          exec:
+            command:
+              - pg_isready
+              - -U
+              - {{ .Values.postgresql.env.POSTGRES_USER }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
         volumeMounts:
         - name: postgresql-data
           mountPath: /var/lib/postgresql/data

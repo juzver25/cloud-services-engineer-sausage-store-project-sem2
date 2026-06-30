@@ -115,6 +115,14 @@ jobs:
                   kubectl delete secret -n "$NS" "sh.helm.release.v1.${RELEASE}.${rev}" || true
                 done
 
+            # Reset broken PostgreSQL volume after incorrect PGDATA on first deploys.
+            PG_REASON=$(kubectl get pod postgresql-0 -n "$NS" -o jsonpath='{.status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || true)
+            if [ "$PG_REASON" = "CrashLoopBackOff" ]; then
+              echo "PostgreSQL is crash looping, recreating data volume..."
+              kubectl delete pod postgresql-0 -n "$NS" --ignore-not-found --wait=true
+              kubectl delete pvc postgresql-data-postgresql-0 -n "$NS" --ignore-not-found --wait=true
+            fi
+
             helm upgrade --install "$RELEASE" nexus/sausage-store \
               --namespace "$NS" \
               --timeout 15m \
@@ -124,6 +132,8 @@ jobs:
               --set backend.image=${DOCKER_USER}/sausage-backend:latest \
               --set backend-report.image=${DOCKER_USER}/sausage-backend-report:latest
             kubectl get pods,svc,ingress -n "$NS"
+            kubectl rollout status statefulset/postgresql -n "$NS" --timeout=300s
+            kubectl rollout status statefulset/mongodb -n "$NS" --timeout=300s
             kubectl rollout status deployment/sausage-store-backend -n "$NS" --timeout=600s || {
               kubectl get pods -n "$NS" -o wide
               kubectl describe deployment sausage-store-backend -n "$NS"
@@ -131,6 +141,7 @@ jobs:
                 kubectl describe -n "$NS" "$pod"
                 kubectl logs -n "$NS" "$pod" --all-containers --tail=100 || true
               done
+              kubectl get events -n "$NS" --sort-by='.lastTimestamp' | tail -20
               exit 1
             }
             kubectl rollout status deployment/sausage-store-frontend -n "$NS" --timeout=300s

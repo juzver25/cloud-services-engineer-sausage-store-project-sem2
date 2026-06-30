@@ -52,6 +52,8 @@ backend:
     postgresPassword: storepassword
     reportPath: /logs/reports
     logPath: /logs
+    springCloudVaultEnabled: "false"
+    springAutoconfigureExclude: org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration,org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
   service:
     port: 8080
   revisionHistoryLimit: 15
@@ -75,8 +77,16 @@ backend:
     httpGet:
       path: /actuator/health
       port: 8080
-    initialDelaySeconds: 30
+    initialDelaySeconds: 180
+    periodSeconds: 15
+    failureThreshold: 6
+  readinessProbe:
+    httpGet:
+      path: /actuator/health
+      port: 8080
+    initialDelaySeconds: 60
     periodSeconds: 10
+    failureThreshold: 12
   vpa:
     updatePolicy:
       updateMode: "Off"

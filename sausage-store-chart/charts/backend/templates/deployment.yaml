@@ -50,7 +50,7 @@ spec:
 {{ toYaml .Values.global.initContainerResources | indent 12 }}
       containers:
         - name: {{ .Chart.Name }}
-          image: {{ .Values.image }}
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           env:
             - name: SPRING_DATASOURCE_URL
@@ -79,7 +79,7 @@ spec:
                   name: {{ .Release.Name }}-{{ .Chart.Name }}-conf
                   key: log_path
             - name: SPRING_CLOUD_VAULT_ENABLED
-              value: {{ .Values.env.springCloudVaultEnabled | quote }}
+              value: {{ .Values.global.vault.enabled | quote }}
             - name: SPRING_AUTOCONFIGURE_EXCLUDE
               value: {{ .Values.env.springAutoconfigureExclude | quote }}
             - name: SPRING_FLYWAY_ENABLED

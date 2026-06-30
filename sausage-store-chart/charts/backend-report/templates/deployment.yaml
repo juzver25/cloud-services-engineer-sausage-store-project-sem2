@@ -40,7 +40,7 @@ spec:
 {{ toYaml .Values.global.initContainerResources | indent 12 }}
       containers:
         - name: {{ .Chart.Name }}
-          image: {{ .Values.image }}
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           env:
             - name: PORT

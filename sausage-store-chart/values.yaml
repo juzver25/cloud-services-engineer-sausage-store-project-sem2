@@ -1,5 +1,6 @@
 global:
   imagePullPolicy: Always
+  imageRegistry: YOUR_DOCKERHUB
   initContainerResources:
     requests:
       cpu: "50m"
@@ -11,10 +12,10 @@ global:
     reportUsername: reports
     reportPassword: reportspassword
     database: sausage-store
-  ###vault:
-  ###  host: ip
-  ###  name: vault
-  ###  vaultToken: someToken
+  vault:
+    enabled: false
+    host: ""
+    vaultToken: ""
 
 
 frontend:
@@ -30,7 +31,9 @@ frontend:
     path: /
     pathType: Prefix
   containerPort: 80
-  image: YOUR_DOCKERHUB/sausage-frontend:latest
+  image:
+    repository: sausage-frontend
+    tag: latest
   resources:
     requests:
       memory: "128Mi"
@@ -63,7 +66,6 @@ backend:
     postgresPassword: storepassword
     reportPath: /logs/reports
     logPath: /logs
-    springCloudVaultEnabled: "false"
     springAutoconfigureExclude: org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration,org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
     springFlywayEnabled: "false"
     springJpaHibernateDdlAuto: update
@@ -73,7 +75,9 @@ backend:
   replicas: 1
   strategy:
     type: Recreate
-  image: YOUR_DOCKERHUB/sausage-backend:latest
+  image:
+    repository: sausage-backend
+    tag: latest
   imagePullPolicy: Always
   resources:
     requests:
@@ -116,7 +120,9 @@ backend-report:
   revisionHistoryLimit: 15
   strategy:
     type: Recreate
-  image: YOUR_DOCKERHUB/sausage-backend-report:latest
+  image:
+    repository: sausage-backend-report
+    tag: latest
   containerPort: 8080
   env:
     db: mongodb://reports:reportspassword@mongodb:27017/sausage-store

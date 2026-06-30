@@ -93,7 +93,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              mongosh "mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/admin" --eval "
+              mongosh "mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/admin?serverSelectionTimeoutMS=5000" --eval "
               db = db.getSiblingDB('${REPORTS_DATABASE}');
               try {
                 db.getUser('${REPORTS_USERNAME}');

@@ -36,6 +36,8 @@ spec:
                 echo "waiting for mongodb..."
                 sleep 2
               done
+          resources:
+{{ toYaml .Values.global.initContainerResources | indent 12 }}
       containers:
         - name: {{ .Chart.Name }}
           image: {{ .Values.image }}

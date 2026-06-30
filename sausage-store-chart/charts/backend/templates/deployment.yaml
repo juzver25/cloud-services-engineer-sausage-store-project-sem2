@@ -46,6 +46,8 @@ spec:
                 configMapKeyRef:
                   name: {{ .Release.Name }}-{{ .Chart.Name }}-conf
                   key: postgres_user
+          resources:
+{{ toYaml .Values.global.initContainerResources | indent 12 }}
       containers:
         - name: {{ .Chart.Name }}
           image: {{ .Values.image }}
